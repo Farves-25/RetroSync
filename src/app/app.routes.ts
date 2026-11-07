@@ -4,7 +4,7 @@ import { authGuard } from './core/guards/auth.guard';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'board/sprint-42',
+    redirectTo: 'dashboard',
     pathMatch: 'full'
   },
   {
@@ -23,6 +23,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'board/sprint-42'
+    redirectTo: 'dashboard'
   }
 ];

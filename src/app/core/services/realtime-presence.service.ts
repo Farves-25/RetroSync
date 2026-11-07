@@ -11,32 +11,120 @@ export interface PresenceUser {
   role?: string;
 }
 
+interface PeerState {
+  user: PresenceUser;
+  lastSeen: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RealtimePresenceService {
   private supabase = inject(SupabaseService);
   private channel: RealtimeChannel | null = null;
-  private simInterval: ReturnType<typeof setInterval> | null = null;
+  private broadcastChannel: BroadcastChannel | null = null;
+  private currentBoardId: string | null = null;
+  private currentUser: PresenceUser | null = null;
+
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+  // Active remote users indexed by ID
+  private activePeers = new Map<string, PeerState>();
 
   public readonly remoteCursors = signal<CursorState[]>([]);
   public readonly onlineUsers = signal<PresenceUser[]>([]);
 
   public initChannel(
     boardId: string,
-    currentUser: { id: string; name: string; color: string; avatar_url?: string },
+    currentUser: { id: string; name: string; color: string; avatar_url?: string; role?: string },
     isDemo = false
   ): void {
     this.leave();
 
+    this.currentBoardId = boardId;
+    this.currentUser = {
+      id: currentUser.id,
+      name: currentUser.name,
+      color: currentUser.color,
+      avatar_url: currentUser.avatar_url,
+      role: currentUser.role || 'Member'
+    };
+
+    // Initialize local tab user in the presence list
+    this.onlineUsers.set([{ ...this.currentUser, name: `${this.currentUser.name} (You)` }]);
+
+    // 1. Cross-tab communication via BroadcastChannel
+    this.initBroadcastChannel(boardId);
+
+    // 2. Cross-device communication via Supabase Realtime if configured
     if (this.supabase.isConfigured() && !isDemo) {
       this.initSupabasePresence(boardId, currentUser);
-    } else {
-      this.initSimulatedCollaborators(currentUser);
+    }
+
+    // 3. Setup periodic presence ping & cleanup of stale peers
+    this.startHeartbeat();
+  }
+
+  private initBroadcastChannel(boardId: string): void {
+    if (typeof BroadcastChannel === 'undefined') return;
+
+    try {
+      this.broadcastChannel = new BroadcastChannel(`retrosync_presence_${boardId}`);
+
+      this.broadcastChannel.onmessage = (event: MessageEvent) => {
+        const data = event.data;
+        if (!data || !this.currentUser || data.userId === this.currentUser.id) {
+          return;
+        }
+
+        switch (data.type) {
+          case 'cursor':
+            this.handleRemoteCursor(data);
+            break;
+          case 'join':
+            this.handlePeerPing(data.user);
+            // Respond with our own presence so the newcomer knows we exist
+            this.broadcastChannel?.postMessage({
+              type: 'announce',
+              userId: this.currentUser.id,
+              user: this.currentUser
+            });
+            break;
+          case 'announce':
+          case 'ping':
+            this.handlePeerPing(data.user);
+            break;
+          case 'leave':
+            this.handlePeerLeave(data.userId);
+            break;
+        }
+      };
+
+      // Announce arrival to all other open tabs
+      this.broadcastChannel.postMessage({
+        type: 'join',
+        userId: this.currentUser!.id,
+        user: this.currentUser
+      });
+
+      // Handle tab closing
+      window.addEventListener('beforeunload', this.onBeforeUnload);
+    } catch (err) {
+      console.warn('BroadcastChannel initialization error:', err);
     }
   }
 
+  private onBeforeUnload = (): void => {
+    if (this.broadcastChannel && this.currentUser) {
+      this.broadcastChannel.postMessage({
+        type: 'leave',
+        userId: this.currentUser.id
+      });
+    }
+  };
+
   private initSupabasePresence(
     boardId: string,
-    currentUser: { id: string; name: string; color: string; avatar_url?: string }
+    currentUser: { id: string; name: string; color: string; avatar_url?: string; role?: string }
   ): void {
     try {
       this.channel = this.supabase.client.channel(`board:${boardId}`, {
@@ -45,47 +133,44 @@ export class RealtimePresenceService {
 
       this.channel
         .on('presence', { event: 'sync' }, () => {
-          if (!this.channel) return;
+          if (!this.channel || !this.currentUser) return;
           const state = this.channel.presenceState();
-          const cursors: CursorState[] = [];
-          const users: PresenceUser[] = [
-            {
-              id: currentUser.id,
-              name: `${currentUser.name} (You)`,
-              color: currentUser.color,
-              avatar_url: currentUser.avatar_url,
-              role: 'Host'
-            }
-          ];
 
           Object.keys(state).forEach((key) => {
-            if (key !== currentUser.id) {
+            if (key !== this.currentUser?.id) {
               const userState = state[key]?.[0] as unknown as (CursorState & { role?: string }) | undefined;
-              if (userState) {
-                if (userState.x !== undefined && userState.y !== undefined) {
-                  cursors.push(userState);
-                }
-                users.push({
-                  id: userState.user_id || key,
+              if (userState && userState.user_id) {
+                this.handlePeerPing({
+                  id: userState.user_id,
                   name: userState.user_name || 'Collaborator',
                   color: userState.color || '#ec4899',
                   avatar_url: userState.avatar_url,
                   role: userState.role || 'Member'
                 });
+                if (userState.x !== undefined && userState.y !== undefined) {
+                  this.handleRemoteCursor({
+                    userId: userState.user_id,
+                    user: {
+                      id: userState.user_id,
+                      name: userState.user_name,
+                      color: userState.color
+                    },
+                    x: userState.x,
+                    y: userState.y
+                  });
+                }
               }
             }
           });
-
-          this.remoteCursors.set(cursors);
-          this.onlineUsers.set(users);
         })
         .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED' && this.channel) {
+          if (status === 'SUBSCRIBED' && this.channel && this.currentUser) {
             await this.channel.track({
-              user_id: currentUser.id,
-              user_name: currentUser.name,
-              color: currentUser.color,
-              avatar_url: currentUser.avatar_url,
+              user_id: this.currentUser.id,
+              user_name: this.currentUser.name,
+              color: this.currentUser.color,
+              avatar_url: this.currentUser.avatar_url,
+              role: this.currentUser.role,
               x: 0,
               y: 0,
               last_active: Date.now()
@@ -93,82 +178,164 @@ export class RealtimePresenceService {
           }
         });
     } catch (err) {
-      console.warn('Realtime Supabase Presence error, falling back to simulated:', err);
-      this.initSimulatedCollaborators(currentUser);
+      console.warn('Realtime Supabase Presence error:', err);
     }
   }
 
-  private initSimulatedCollaborators(currentUser: { id: string; name: string; color: string; avatar_url?: string }): void {
-    const mockUsers: PresenceUser[] = [
-      { id: currentUser.id, name: `${currentUser.name} (You)`, color: currentUser.color, role: 'Host' },
-      { id: 'sim-maya', name: 'Maya Lin (UX)', color: '#ec4899', role: 'Designer' },
-      { id: 'sim-alex', name: 'Alex Rivera (Staff Eng)', color: '#06b6d4', role: 'Facilitator' },
-      { id: 'sim-sam', name: 'Sam Chen (Fullstack)', color: '#10b981', role: 'Engineer' }
-    ];
-    this.onlineUsers.set(mockUsers);
-
-    // Initial simulated cursors
-    let simCursors: CursorState[] = [
-      {
-        user_id: 'sim-maya',
-        user_name: 'Maya Lin (UX)',
-        color: '#ec4899',
-        x: 420,
-        y: 280,
-        last_active: Date.now()
-      },
-      {
-        user_id: 'sim-alex',
-        user_name: 'Alex Rivera',
-        color: '#06b6d4',
-        x: 780,
-        y: 340,
-        last_active: Date.now()
+  private startHeartbeat(): void {
+    // Ping every 1.5s to maintain presence across tabs
+    this.pingInterval = setInterval(() => {
+      if (this.broadcastChannel && this.currentUser) {
+        this.broadcastChannel.postMessage({
+          type: 'ping',
+          userId: this.currentUser.id,
+          user: this.currentUser
+        });
       }
-    ];
-    this.remoteCursors.set(simCursors);
+    }, 1500);
 
-    // Smooth organic wandering for demo showcase
-    this.simInterval = setInterval(() => {
-      const now = Date.now();
-      const t = now / 1000;
-      simCursors = [
-        {
-          user_id: 'sim-maya',
-          user_name: 'Maya Lin (UX)',
-          color: '#ec4899',
-          x: Math.max(120, Math.min(window.innerWidth - 180, 420 + Math.sin(t * 0.9) * 220 + Math.cos(t * 0.4) * 80)),
-          y: Math.max(180, Math.min(window.innerHeight - 150, 320 + Math.cos(t * 1.1) * 160)),
-          last_active: now
-        },
-        {
-          user_id: 'sim-alex',
-          user_name: 'Alex Rivera',
-          color: '#06b6d4',
-          x: Math.max(150, Math.min(window.innerWidth - 200, 720 + Math.cos(t * 0.7) * 280)),
-          y: Math.max(200, Math.min(window.innerHeight - 160, 420 + Math.sin(t * 0.8) * 140)),
-          last_active: now
+    // Check every second for disconnected peers (older than 4.5s)
+    this.cleanupInterval = setInterval(() => {
+      const threshold = Date.now() - 4500;
+      let changed = false;
+
+      this.activePeers.forEach((peer, userId) => {
+        if (peer.lastSeen < threshold) {
+          this.activePeers.delete(userId);
+          changed = true;
         }
-      ];
-      this.remoteCursors.set(simCursors);
-    }, 60);
+      });
+
+      if (changed) {
+        this.syncOnlineUsers();
+        this.cleanupStaleCursors(threshold);
+      }
+    }, 1000);
+  }
+
+  private handlePeerPing(user: PresenceUser): void {
+    if (!user || !user.id || (this.currentUser && user.id === this.currentUser.id)) {
+      return;
+    }
+    const isNew = !this.activePeers.has(user.id);
+    this.activePeers.set(user.id, { user, lastSeen: Date.now() });
+
+    if (isNew) {
+      this.syncOnlineUsers();
+    }
+  }
+
+  private handlePeerLeave(userId: string): void {
+    if (this.activePeers.has(userId)) {
+      this.activePeers.delete(userId);
+      this.syncOnlineUsers();
+      this.remoteCursors.update(cursors => cursors.filter(c => c.user_id !== userId));
+    }
+  }
+
+  private handleRemoteCursor(data: { userId: string; user: PresenceUser; x: number; y: number }): void {
+    if (!this.currentUser || data.userId === this.currentUser.id) return;
+
+    // Refresh peer in online users
+    this.handlePeerPing(data.user);
+
+    // Update cursor position in remoteCursors signal
+    this.remoteCursors.update(cursors => {
+      const idx = cursors.findIndex(c => c.user_id === data.userId);
+      const updatedCursor: CursorState = {
+        user_id: data.userId,
+        user_name: data.user.name,
+        color: data.user.color,
+        avatar_url: data.user.avatar_url,
+        x: data.x,
+        y: data.y,
+        last_active: Date.now()
+      };
+
+      if (idx >= 0) {
+        const next = [...cursors];
+        next[idx] = updatedCursor;
+        return next;
+      } else {
+        return [...cursors, updatedCursor];
+      }
+    });
+  }
+
+  private cleanupStaleCursors(threshold: number): void {
+    this.remoteCursors.update(cursors => cursors.filter(c => c.last_active >= threshold));
+  }
+
+  private syncOnlineUsers(): void {
+    if (!this.currentUser) return;
+
+    const list: PresenceUser[] = [
+      { ...this.currentUser, name: `${this.currentUser.name} (You)` }
+    ];
+
+    this.activePeers.forEach(peer => {
+      list.push(peer.user);
+    });
+
+    this.onlineUsers.set(list);
   }
 
   public broadcastCursor(x: number, y: number): void {
+    if (!this.currentUser) return;
+
+    // 1. Cross-tab BroadcastChannel
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage({
+        type: 'cursor',
+        userId: this.currentUser.id,
+        user: this.currentUser,
+        x,
+        y
+      });
+    }
+
+    // 2. Supabase Realtime channel
     if (this.channel) {
-      this.channel.track({ x, y, last_active: Date.now() });
+      this.channel.track({
+        user_id: this.currentUser.id,
+        user_name: this.currentUser.name,
+        color: this.currentUser.color,
+        avatar_url: this.currentUser.avatar_url,
+        role: this.currentUser.role,
+        x,
+        y,
+        last_active: Date.now()
+      });
     }
   }
 
   public leave(): void {
-    if (this.simInterval) {
-      clearInterval(this.simInterval);
-      this.simInterval = null;
+    window.removeEventListener('beforeunload', this.onBeforeUnload);
+
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
     }
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+
+    if (this.broadcastChannel && this.currentUser) {
+      this.broadcastChannel.postMessage({
+        type: 'leave',
+        userId: this.currentUser.id
+      });
+      this.broadcastChannel.close();
+      this.broadcastChannel = null;
+    }
+
     if (this.channel) {
       this.channel.unsubscribe();
       this.channel = null;
     }
+
+    this.activePeers.clear();
     this.remoteCursors.set([]);
     this.onlineUsers.set([]);
   }

@@ -2,14 +2,21 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (route) => {
   const authService = inject(AuthService);
-  const router = inject(Router);
 
   if (authService.isAuthenticated()) {
     return true;
   }
 
-  return router.parseUrl('/auth/login');
-};
+  // If user parameter is provided in query params, auto-initialize that persona
+  const userParam = route.queryParamMap.get('user');
+  if (userParam) {
+    authService.signInAsDemoUser(userParam);
+    return true;
+  }
 
+  // Initialize default guest participant for frictionless direct board viewing
+  authService.signInAsDemoUser('Alex Rivera');
+  return true;
+};

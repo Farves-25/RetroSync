@@ -9,18 +9,15 @@ export interface AppUser {
   name: string;
   color: string;
   avatar_url?: string;
+  role?: string;
   isDemo?: boolean;
 }
 
-const COLLABORATOR_COLORS = [
-  '#6366f1', // Indigo
-  '#ec4899', // Pink
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#06b6d4', // Cyan
-  '#8b5cf6', // Violet
-  '#f97316', // Orange
-  '#14b8a6'  // Teal
+export const PRESET_COLLABORATORS = [
+  { name: 'Alex Rivera', role: 'Staff Eng / Host', color: '#6366f1' },
+  { name: 'Maya Lin', role: 'UX Designer', color: '#ec4899' },
+  { name: 'Sam Chen', role: 'Fullstack Dev', color: '#10b981' },
+  { name: 'Jordan Lee', role: 'Product Manager', color: '#f59e0b' }
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -35,18 +32,28 @@ export class AuthService {
     this.checkInitialSession();
   }
 
-  private getRandomColor(): string {
-    return COLLABORATOR_COLORS[Math.floor(Math.random() * COLLABORATOR_COLORS.length)];
-  }
-
   private getStoredUser(): AppUser | null {
-    const raw = localStorage.getItem('RETROSYNC_USER');
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return null;
+    const sessionRaw = sessionStorage.getItem('RETROSYNC_TAB_USER');
+    if (sessionRaw) {
+      try {
+        return JSON.parse(sessionRaw);
+      } catch {
+        // continue
+      }
     }
+
+    const localRaw = localStorage.getItem('RETROSYNC_USER');
+    if (localRaw) {
+      try {
+        const parsed = JSON.parse(localRaw);
+        sessionStorage.setItem('RETROSYNC_TAB_USER', JSON.stringify(parsed));
+        return parsed;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   private async checkInitialSession() {
@@ -68,18 +75,20 @@ export class AuthService {
       id: user.id,
       email: user.email || 'developer@retrosync.io',
       name: user.user_metadata?.['name'] || user.email?.split('@')[0] || 'Team Member',
-      color: existing?.color || this.getRandomColor(),
+      color: existing?.color || '#6366f1',
       avatar_url: user.user_metadata?.['avatar_url'],
+      role: user.user_metadata?.['role'] || 'Engineer',
       isDemo: false
     };
     this.currentUser.set(appUser);
+    sessionStorage.setItem('RETROSYNC_TAB_USER', JSON.stringify(appUser));
     localStorage.setItem('RETROSYNC_USER', JSON.stringify(appUser));
     return appUser;
   }
 
   public async signInWithEmail(email: string): Promise<{ error: Error | null }> {
     if (!this.supabase.isConfigured()) {
-      return { error: new Error('Supabase is not configured yet. Use Demo Mode or set keys.') };
+      return { error: new Error('Supabase is not configured. Please supply keys in Settings or login with Guest mode.') };
     }
     try {
       const { error } = await this.supabase.client.auth.signInWithOtp({
@@ -94,18 +103,81 @@ export class AuthService {
     }
   }
 
+  public async signInWithPassword(email: string, password: string): Promise<{ error: Error | null }> {
+    if (!this.supabase.isConfigured()) {
+      return { error: new Error('Supabase is not configured yet.') };
+    }
+    try {
+      const { data, error } = await this.supabase.client.auth.signInWithPassword({ email, password });
+      if (data.user) {
+        this.setAppUserFromSupabase(data.user);
+      }
+      return { error };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
+  }
+
+  public async signUpWithPassword(email: string, password: string, name: string): Promise<{ error: Error | null }> {
+    if (!this.supabase.isConfigured()) {
+      return { error: new Error('Supabase is not configured yet.') };
+    }
+    try {
+      const { data, error } = await this.supabase.client.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name }
+        }
+      });
+      if (data.user) {
+        this.setAppUserFromSupabase(data.user);
+      }
+      return { error };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
+  }
+
   public signInAsDemoUser(customName?: string): AppUser {
-    const name = customName?.trim() || `Facilitator (${Math.floor(100 + Math.random() * 900)})`;
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const personaIndex = Math.floor(Math.random() * PRESET_COLLABORATORS.length);
+    const persona = PRESET_COLLABORATORS[personaIndex];
+
+    const chosenName = customName?.trim() || persona.name;
+    const chosenColor = persona.color;
+
     const demoUser: AppUser = {
-      id: 'demo-user-' + Math.random().toString(36).substring(2, 9),
-      email: `${name.toLowerCase().replace(/\s+/g, '.')}@retrosync.demo`,
-      name: name,
-      color: this.getRandomColor(),
+      id: 'user-' + randomSuffix,
+      email: `${chosenName.toLowerCase().replace(/[^a-z]/g, '')}@retrosync.demo`,
+      name: chosenName,
+      color: chosenColor,
+      role: persona.role,
       isDemo: true
     };
+
     this.currentUser.set(demoUser);
-    localStorage.setItem('RETROSYNC_USER', JSON.stringify(demoUser));
+    sessionStorage.setItem('RETROSYNC_TAB_USER', JSON.stringify(demoUser));
     return demoUser;
+  }
+
+  public switchPersona(name: string, role: string, color: string): AppUser {
+    const existing = this.currentUser();
+    const updated: AppUser = {
+      id: existing?.id || ('user-' + Math.random().toString(36).substring(2, 7)),
+      email: `${name.toLowerCase().replace(/[^a-z]/g, '')}@retrosync.demo`,
+      name,
+      role,
+      color,
+      isDemo: existing?.isDemo ?? true
+    };
+    this.currentUser.set(updated);
+    sessionStorage.setItem('RETROSYNC_TAB_USER', JSON.stringify(updated));
+    return updated;
+  }
+
+  public updateUserProfile(name: string, role: string, color: string): void {
+    this.switchPersona(name, role, color);
   }
 
   public async signOut(): Promise<void> {
@@ -117,8 +189,8 @@ export class AuthService {
       }
     }
     this.currentUser.set(null);
+    sessionStorage.removeItem('RETROSYNC_TAB_USER');
     localStorage.removeItem('RETROSYNC_USER');
     this.router.navigate(['/auth/login']);
   }
 }
-

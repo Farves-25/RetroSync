@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, PRESET_COLLABORATORS } from '../../core/services/auth.service';
 import { SupabaseService } from '../../core/services/supabase.service';
 import { ToastService } from '../../shared/services/toast.service';
 
@@ -26,28 +26,49 @@ import { ToastService } from '../../shared/services/toast.service';
           </p>
         </div>
 
-        <!-- Portfolio Demo Quick-Start (Instant Access) -->
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-indigo-500/30 flex flex-col gap-3 shadow-inner">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Quick Portfolio Demo</span>
+        <!-- Role & Name Setup -->
+        <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-700 flex flex-col gap-3 shadow-inner">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Join Workspace</span>
+            <span class="text-[10px] text-emerald-400 font-mono">⚡ Real-time Active</span>
           </div>
-          <p class="text-xs text-slate-300 leading-relaxed">
-            Jump directly into a live interactive session with simulated team collaborators, real-time drag-and-drop, and voting.
-          </p>
-          <div class="space-y-2">
-            <input
-              type="text"
-              #nameInput
-              [value]="demoName()"
-              (input)="demoName.set(nameInput.value)"
-              placeholder="Your Name (e.g. Alex Rivera)"
-              class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+
+          <div class="space-y-2.5">
+            <div>
+              <label for="user-name" class="block text-[11px] font-medium text-slate-400 mb-1">Your Full Name</label>
+              <input
+                id="user-name"
+                type="text"
+                #nameInput
+                [value]="userName()"
+                (input)="userName.set(nameInput.value)"
+                placeholder="e.g. Alex Rivera"
+                class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-medium text-slate-400 mb-1">Role in Retrospective</label>
+              <div class="grid grid-cols-2 gap-1.5 text-xs">
+                @for (preset of presetCollaborators; track preset.name) {
+                  <button
+                    type="button"
+                    (click)="selectPreset(preset)"
+                    class="px-2.5 py-2 rounded-lg border text-left transition flex items-center gap-2"
+                    [class.border-indigo-500]="selectedRole() === preset.role"
+                    [class.bg-indigo-950/40]="selectedRole() === preset.role"
+                    [class.border-slate-800]="selectedRole() !== preset.role">
+                    <span class="w-2 h-2 rounded-full flex-shrink-0" [style.background-color]="preset.color"></span>
+                    <span class="truncate font-medium text-slate-200">{{ preset.role.split('/')[0] }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+
             <button
               type="button"
-              (click)="loginDemo()"
-              class="w-full py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
-              <span>Enter Retro Board as Facilitator</span>
+              (click)="enterWorkspace()"
+              class="w-full py-2.5 mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-semibold text-xs shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
+              <span>Enter Workspace</span>
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
@@ -55,83 +76,47 @@ import { ToastService } from '../../shared/services/toast.service';
           </div>
         </div>
 
-        <!-- Divider -->
-        <div class="relative flex items-center justify-center">
-          <div class="border-t border-slate-800 w-full"></div>
-          <span class="bg-slate-900/90 px-3 text-[11px] font-semibold text-slate-500 uppercase tracking-widest absolute">
-            Or Live Supabase
-          </span>
-        </div>
-
-        <!-- Magic Link Sign In -->
-        <div class="space-y-3">
-          <div>
-            <label for="email" class="block text-xs font-medium text-slate-300 mb-1">Work Email</label>
-            <input
-              id="email"
-              type="email"
-              #emailInput
-              [value]="email()"
-              (input)="email.set(emailInput.value)"
-              (keydown.enter)="signInWithEmail()"
-              placeholder="developer@company.com"
-              class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <!-- Supabase Cloud Connection Indicator -->
+        <div class="p-3 rounded-xl bg-slate-900/50 border border-slate-800 flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span
+              class="w-2 h-2 rounded-full"
+              [class.bg-emerald-400]="supabaseService.isConfigured()"
+              [class.bg-amber-400]="!supabaseService.isConfigured()">
+            </span>
+            <span class="text-slate-300">
+              {{ supabaseService.isConfigured() ? 'Supabase Postgres Connected' : 'Local Realtime Broadcast Active' }}
+            </span>
           </div>
-
-          <button
-            type="button"
-            (click)="signInWithEmail()"
-            [disabled]="loading() || !email().trim()"
-            class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-semibold text-xs border border-slate-700 transition">
-            {{ loading() ? 'Sending Magic Link...' : 'Send Magic Link' }}
-          </button>
-        </div>
-
-        <!-- Feature Highlights Footer -->
-        <div class="pt-2 border-t border-slate-800/80 flex items-center justify-around text-[10px] text-slate-400">
-          <span class="flex items-center gap-1">⚡ Angular 22 Signals</span>
-          <span class="flex items-center gap-1">🖱️ Cursors</span>
-          <span class="flex items-center gap-1">🔒 Stealth Mode</span>
+          <span class="text-[10px] text-slate-500 font-mono">
+            {{ supabaseService.isConfigured() ? 'ONLINE' : 'PEER-TO-PEER' }}
+          </span>
         </div>
       </div>
     </div>
   `
 })
 export class LoginComponent {
-  private authService = inject(AuthService);
-  private supabaseService = inject(SupabaseService);
+  public authService = inject(AuthService);
+  public supabaseService = inject(SupabaseService);
   private toastService = inject(ToastService);
   private router = inject(Router);
 
-  public email = signal<string>('');
-  public demoName = signal<string>('Alex Rivera');
-  public loading = signal<boolean>(false);
+  public presetCollaborators = PRESET_COLLABORATORS;
+  public userName = signal<string>('Alex Rivera');
+  public selectedRole = signal<string>('Staff Eng / Host');
+  public selectedColor = signal<string>('#6366f1');
 
-  public loginDemo(): void {
-    const user = this.authService.signInAsDemoUser(this.demoName());
-    this.toastService.show(`Welcome to RetroSync, ${user.name}!`, 'success');
-    this.router.navigate(['/board/sprint-42']);
+  public selectPreset(preset: { name: string; role: string; color: string }): void {
+    this.userName.set(preset.name);
+    this.selectedRole.set(preset.role);
+    this.selectedColor.set(preset.color);
   }
 
-  public async signInWithEmail(): Promise<void> {
-    const emailVal = this.email().trim();
-    if (!emailVal) return;
-
-    if (!this.supabaseService.isConfigured()) {
-      this.toastService.show('Supabase is not configured yet. Using instant demo login.', 'info');
-      this.loginDemo();
-      return;
-    }
-
-    this.loading.set(true);
-    const { error } = await this.authService.signInWithEmail(emailVal);
-    this.loading.set(false);
-
-    if (error) {
-      this.toastService.show(error.message, 'error');
-    } else {
-      this.toastService.show('Magic link sent! Check your email inbox.', 'success');
-    }
+  public enterWorkspace(): void {
+    const name = this.userName().trim() || 'Alex Rivera';
+    const user = this.authService.switchPersona(name, this.selectedRole(), this.selectedColor());
+    this.toastService.show(`Welcome to RetroSync, ${user.name}!`, 'success');
+    this.router.navigate(['/dashboard']);
   }
 }
-

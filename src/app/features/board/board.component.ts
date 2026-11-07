@@ -2,7 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed } from '@angular
 import { ActivatedRoute } from '@angular/router';
 import { BoardStateService } from '../../core/services/board-state.service';
 import { RealtimePresenceService } from '../../core/services/realtime-presence.service';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, PRESET_COLLABORATORS } from '../../core/services/auth.service';
 import { BoardHeaderComponent } from './components/board-header/board-header.component';
 import { RetroColumnComponent } from './components/retro-column/retro-column.component';
 import { CursorCanvasComponent } from './components/cursor-canvas/cursor-canvas.component';
@@ -24,7 +24,7 @@ import { SettingsModalComponent } from './components/settings-modal/settings-mod
   ],
   template: `
     <div class="relative w-screen h-screen flex flex-col overflow-hidden canvas-grid">
-      <!-- Live SVG Cursor Layer -->
+      <!-- Live SVG Cursor Layer (Real Remote Cursors Only) -->
       <app-cursor-canvas></app-cursor-canvas>
 
       <!-- Board Navigation & Presence Header -->
@@ -88,13 +88,28 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const boardId = this.route.snapshot.paramMap.get('id') || 'demo-board';
-    const user = this.authService.currentUser() || this.authService.signInAsDemoUser('Alex Rivera');
+    const userParam = this.route.snapshot.queryParamMap.get('user');
+
+    let user = this.authService.currentUser();
+    if (!user || userParam) {
+      if (userParam) {
+        const found = PRESET_COLLABORATORS.find(p => p.name.toLowerCase() === userParam.toLowerCase());
+        if (found) {
+          user = this.authService.switchPersona(found.name, found.role, found.color);
+        } else {
+          user = this.authService.signInAsDemoUser(userParam);
+        }
+      } else {
+        user = this.authService.signInAsDemoUser('Alex Rivera');
+      }
+    }
 
     this.boardState.loadBoard(boardId);
     this.presenceService.initChannel(boardId, {
       id: user.id,
       name: user.name,
       color: user.color,
+      role: user.role,
       avatar_url: user.avatar_url
     }, user.isDemo);
   }
@@ -108,4 +123,3 @@ export class BoardComponent implements OnInit, OnDestroy {
     this.isAddCardModalOpen.set(true);
   }
 }
-
