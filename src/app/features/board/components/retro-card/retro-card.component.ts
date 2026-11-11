@@ -2,9 +2,11 @@ import { Component, input, inject, signal } from '@angular/core';
 import { Card } from '../../../../core/models/board.model';
 import { BoardStateService } from '../../../../core/services/board-state.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import { ConfirmModalComponent } from '../../../../shared/components/confirm-modal.component';
 
 @Component({
   selector: 'app-retro-card',
+  imports: [ConfirmModalComponent],
   template: `
     <div
       class="group relative rounded-xl p-4 transition-all duration-200 border shadow-lg glass-card hover:border-slate-600/80 hover:shadow-xl hover:-translate-y-0.5"
@@ -80,7 +82,7 @@ import { AuthService } from '../../../../core/services/auth.service';
             </button>
             <button
               type="button"
-              (click)="$event.stopPropagation(); deleteCard()"
+              (click)="$event.stopPropagation(); isConfirmDeleteOpen.set(true)"
               class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 transition"
               title="Delete card">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -116,6 +118,19 @@ import { AuthService } from '../../../../core/services/auth.service';
           </button>
         </div>
       </div>
+
+      <!-- Custom Confirmation Dialog for Card Deletion -->
+      @if (isConfirmDeleteOpen()) {
+        <app-confirm-modal
+          title="Delete Card"
+          message="Are you sure you want to delete this retrospective card? This action cannot be undone."
+          confirmText="Delete Card"
+          cancelText="Keep Card"
+          [isDestructive]="true"
+          (confirm)="confirmDeleteCard()"
+          (cancel)="isConfirmDeleteOpen.set(false)">
+        </app-confirm-modal>
+      }
     </div>
   `
 })
@@ -127,6 +142,7 @@ export class RetroCardComponent {
   private authService = inject(AuthService);
 
   public isEditing = signal<boolean>(false);
+  public isConfirmDeleteOpen = signal<boolean>(false);
 
   public shouldBlurContent(): boolean {
     if (!this.isBlurred()) return false;
@@ -144,8 +160,9 @@ export class RetroCardComponent {
     this.boardState.toggleVote(this.card().id);
   }
 
-  public deleteCard(): void {
+  public confirmDeleteCard(): void {
     this.boardState.deleteCard(this.card().id);
+    this.isConfirmDeleteOpen.set(false);
   }
 
   public saveEdit(newContent: string): void {
@@ -155,4 +172,3 @@ export class RetroCardComponent {
     }
   }
 }
-

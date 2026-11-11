@@ -1,11 +1,13 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { BoardStateService, BoardListItem, RetroTemplate } from '../../core/services/board-state.service';
 import { ToastService } from '../../shared/services/toast.service';
+import { ConfirmModalComponent } from '../../shared/components/confirm-modal.component';
 
 @Component({
   selector: 'app-board-list',
+  imports: [ConfirmModalComponent],
   template: `
     <div class="min-h-screen w-screen canvas-grid p-6 md:p-12 text-slate-100 flex flex-col select-none">
       <!-- Top Navigation -->
@@ -72,7 +74,7 @@ import { ToastService } from '../../shared/services/toast.service';
                       @if (boards().length > 1) {
                         <button
                           type="button"
-                          (click)="$event.stopPropagation(); deleteBoard(board.id, board.title)"
+                          (click)="$event.stopPropagation(); requestDeleteBoard(board.id, board.title)"
                           class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 transition"
                           title="Delete Board">
                           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,7 +109,7 @@ import { ToastService } from '../../shared/services/toast.service';
         }
       </main>
 
-      <!-- Real New Board Creator Modal -->
+      <!-- Custom Retro Board Creator Dialog -->
       @if (isCreateModalOpen()) {
         <div
           class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in"
@@ -156,7 +158,7 @@ import { ToastService } from '../../shared/services/toast.service';
                 [value]="newDescription()"
                 (input)="newDescription.set(newDescInput.value)"
                 placeholder="Reviewing velocity, cross-team friction, and delivery milestone."
-                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             </div>
 
             <!-- Template Picker -->
@@ -229,6 +231,19 @@ import { ToastService } from '../../shared/services/toast.service';
           </div>
         </div>
       }
+
+      <!-- Custom Confirmation Dialog for Board Deletion -->
+      @if (boardToDelete(); as target) {
+        <app-confirm-modal
+          title="Delete Retrospective Board"
+          [message]="deleteBoardMessage()"
+          confirmText="Delete Board"
+          cancelText="Keep Board"
+          [isDestructive]="true"
+          (confirm)="confirmDeleteBoard()"
+          (cancel)="boardToDelete.set(null)">
+        </app-confirm-modal>
+      }
     </div>
   `
 })
@@ -245,6 +260,15 @@ export class BoardListComponent implements OnInit {
   public newTitle = signal<string>('Sprint ' + (42 + Math.floor(Math.random() * 10)) + ' Retrospective');
   public newDescription = signal<string>('Team retrospective on velocity, architecture milestones, and continuous improvements.');
   public selectedTemplate = signal<RetroTemplate>('classic');
+
+  // State-driven confirmation dialog
+  public boardToDelete = signal<{ id: string; title: string } | null>(null);
+
+  public deleteBoardMessage = computed(() => {
+    const target = this.boardToDelete();
+    if (!target) return '';
+    return `Are you sure you want to delete board "${target.title}"? This will permanently delete all columns, cards, and votes associated with this session.`;
+  });
 
   ngOnInit(): void {
     this.refreshBoards();
@@ -271,11 +295,17 @@ export class BoardListComponent implements OnInit {
     this.router.navigate(['/board', boardId]);
   }
 
-  public async deleteBoard(boardId: string, title: string): Promise<void> {
-    if (confirm(`Are you sure you want to delete board "${title}"?`)) {
-      await this.boardState.deleteBoard(boardId);
-      this.toastService.show('Board deleted', 'info');
-      this.refreshBoards();
-    }
+  public requestDeleteBoard(boardId: string, title: string): void {
+    this.boardToDelete.set({ id: boardId, title });
+  }
+
+  public async confirmDeleteBoard(): Promise<void> {
+    const target = this.boardToDelete();
+    if (!target) return;
+
+    await this.boardState.deleteBoard(target.id);
+    this.toastService.show(`Board "${target.title}" deleted`, 'info');
+    this.boardToDelete.set(null);
+    this.refreshBoards();
   }
 }

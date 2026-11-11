@@ -140,7 +140,7 @@ export class AuthService {
   }
 
   public signInAsDemoUser(customName?: string): AppUser {
-    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const randomSuffix = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     const personaIndex = Math.floor(Math.random() * PRESET_COLLABORATORS.length);
     const persona = PRESET_COLLABORATORS[personaIndex];
 
@@ -161,10 +161,30 @@ export class AuthService {
     return demoUser;
   }
 
+  public createPersona(name: string, role: string, color: string, explicitId?: string): AppUser {
+    const id = explicitId || ('user-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6));
+    const user: AppUser = {
+      id,
+      email: `${name.toLowerCase().replace(/[^a-z]/g, '')}@retrosync.demo`,
+      name,
+      role,
+      color,
+      isDemo: true
+    };
+    this.currentUser.set(user);
+    sessionStorage.setItem('RETROSYNC_TAB_USER', JSON.stringify(user));
+    return user;
+  }
+
   public switchPersona(name: string, role: string, color: string): AppUser {
     const existing = this.currentUser();
+    // If switching to another person, generate a distinct ID so cursors and votes don't collide
+    const newId = (existing && existing.name === name)
+      ? existing.id
+      : ('user-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6));
+
     const updated: AppUser = {
-      id: existing?.id || ('user-' + Math.random().toString(36).substring(2, 7)),
+      id: newId,
       email: `${name.toLowerCase().replace(/[^a-z]/g, '')}@retrosync.demo`,
       name,
       role,

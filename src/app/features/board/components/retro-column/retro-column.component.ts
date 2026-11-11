@@ -4,10 +4,11 @@ import { Column, Card } from '../../../../core/models/board.model';
 import { BoardStateService } from '../../../../core/services/board-state.service';
 import { RetroCardComponent } from '../retro-card/retro-card.component';
 import { ToastService } from '../../../../shared/services/toast.service';
+import { ConfirmModalComponent } from '../../../../shared/components/confirm-modal.component';
 
 @Component({
   selector: 'app-retro-column',
-  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, RetroCardComponent],
+  imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, RetroCardComponent, ConfirmModalComponent],
   template: `
     <div class="flex flex-col w-80 md:w-88 flex-shrink-0 max-h-full rounded-2xl bg-slate-900/60 border border-slate-800/90 shadow-2xl backdrop-blur-xl flex-1">
       <!-- Column Header -->
@@ -57,7 +58,7 @@ import { ToastService } from '../../../../shared/services/toast.service';
             </button>
             <button
               type="button"
-              (click)="deleteColumn()"
+              (click)="isConfirmDeleteOpen.set(true)"
               class="p-1 rounded hover:bg-rose-950/60 text-slate-400 hover:text-rose-300 transition"
               title="Delete column">
               <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,6 +121,19 @@ import { ToastService } from '../../../../shared/services/toast.service';
           </div>
         }
       </div>
+
+      <!-- Confirmation Dialog for Column Deletion -->
+      @if (isConfirmDeleteOpen()) {
+        <app-confirm-modal
+          title="Delete Column"
+          [message]="deleteColumnMessage()"
+          confirmText="Delete Column"
+          cancelText="Keep Column"
+          [isDestructive]="true"
+          (confirm)="confirmDeleteColumn()"
+          (cancel)="isConfirmDeleteOpen.set(false)">
+        </app-confirm-modal>
+      }
     </div>
   `
 })
@@ -132,6 +146,11 @@ export class RetroColumnComponent {
   private toastService = inject(ToastService);
 
   public isEditingTitle = signal<boolean>(false);
+  public isConfirmDeleteOpen = signal<boolean>(false);
+
+  public deleteColumnMessage = computed(() => {
+    return `Are you sure you want to delete column "${this.column().title}" and all ${this.cards().length} cards in it? This action cannot be undone.`;
+  });
 
   public cards = computed(() => {
     return this.boardState.columnCardMap().get(this.column().id) || [];
@@ -149,11 +168,10 @@ export class RetroColumnComponent {
     }
   }
 
-  public deleteColumn(): void {
-    if (confirm(`Delete column "${this.column().title}" and all its cards?`)) {
-      this.boardState.deleteColumn(this.column().id);
-      this.toastService.show(`Column removed`, 'warning');
-    }
+  public confirmDeleteColumn(): void {
+    this.boardState.deleteColumn(this.column().id);
+    this.toastService.show(`Column "${this.column().title}" removed`, 'warning');
+    this.isConfirmDeleteOpen.set(false);
   }
 
   public onCardDrop(event: CdkDragDrop<Card[]>): void {

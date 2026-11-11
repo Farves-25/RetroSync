@@ -89,16 +89,15 @@ export class BoardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const boardId = this.route.snapshot.paramMap.get('id') || 'demo-board';
     const userParam = this.route.snapshot.queryParamMap.get('user');
+    const uidParam = this.route.snapshot.queryParamMap.get('uid');
 
     let user = this.authService.currentUser();
-    if (!user || userParam) {
-      if (userParam) {
-        const found = PRESET_COLLABORATORS.find(p => p.name.toLowerCase() === userParam.toLowerCase());
-        if (found) {
-          user = this.authService.switchPersona(found.name, found.role, found.color);
-        } else {
-          user = this.authService.signInAsDemoUser(userParam);
-        }
+    if (userParam || uidParam || !user) {
+      if (userParam || uidParam) {
+        const found = PRESET_COLLABORATORS.find(p => p.name.toLowerCase() === userParam?.toLowerCase());
+        const role = found ? found.role : 'Team Member';
+        const color = found ? found.color : '#ec4899';
+        user = this.authService.createPersona(userParam || 'Maya Lin', role, color, uidParam || undefined);
       } else {
         user = this.authService.signInAsDemoUser('Alex Rivera');
       }

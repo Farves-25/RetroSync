@@ -1,4 +1,4 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, output, signal, ElementRef } from '@angular/core';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { BoardStateService } from '../../../../core/services/board-state.service';
 import { AuthService, PRESET_COLLABORATORS } from '../../../../core/services/auth.service';
@@ -10,8 +10,12 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
 @Component({
   selector: 'app-board-header',
   imports: [PresenceBarComponent, RouterLink],
+  host: {
+    'class': 'relative z-50 block',
+    '(document:click)': 'onDocumentClick($event)'
+  },
   template: `
-    <header class="h-16 px-4 sm:px-6 glass-panel border-b border-slate-800/80 flex items-center justify-between z-30 select-none">
+    <header class="relative z-50 h-16 px-4 sm:px-6 glass-panel border-b border-slate-800/80 flex items-center justify-between select-none">
       <!-- Left: Navigation, Logo & Board Title -->
       <div class="flex items-center gap-3">
         <!-- Back to Dashboard -->
@@ -85,7 +89,7 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
         <div class="relative">
           <button
             type="button"
-            (click)="isPersonaMenuOpen.set(!isPersonaMenuOpen())"
+            (click)="$event.stopPropagation(); isPersonaMenuOpen.set(!isPersonaMenuOpen()); isExportMenuOpen.set(false)"
             class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 text-xs text-slate-200 transition shadow-sm"
             title="Switch User Persona for this tab">
             <span
@@ -102,7 +106,8 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
 
           @if (isPersonaMenuOpen()) {
             <div
-              class="absolute right-0 mt-2 w-52 glass-panel rounded-2xl shadow-2xl border border-slate-700/80 p-2 z-50 text-xs flex flex-col gap-1 backdrop-blur-2xl">
+              (click)="$event.stopPropagation()"
+              class="absolute right-0 top-full mt-2 w-56 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 text-xs flex flex-col gap-1 backdrop-blur-2xl ring-1 ring-black/50">
               <span class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Switch Identity (This Tab)
               </span>
@@ -141,7 +146,7 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
         <div class="relative">
           <button
             type="button"
-            (click)="isExportMenuOpen.set(!isExportMenuOpen())"
+            (click)="$event.stopPropagation(); isExportMenuOpen.set(!isExportMenuOpen()); isPersonaMenuOpen.set(false)"
             class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition"
             title="Export Retrospective Insights">
             <svg class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -155,7 +160,8 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
 
           @if (isExportMenuOpen()) {
             <div
-              class="absolute right-0 mt-2 w-48 glass-panel rounded-2xl shadow-2xl border border-slate-700 p-2 z-50 text-xs flex flex-col gap-1 backdrop-blur-2xl">
+              (click)="$event.stopPropagation()"
+              class="absolute right-0 top-full mt-2 w-52 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-2 z-50 text-xs flex flex-col gap-1 backdrop-blur-2xl ring-1 ring-black/50">
               <button
                 type="button"
                 (click)="exportMarkdown(); isExportMenuOpen.set(false)"
@@ -232,11 +238,19 @@ export class BoardHeaderComponent {
   public presenceService = inject(RealtimePresenceService);
   public toastService = inject(ToastService);
   private route = inject(ActivatedRoute);
+  private elementRef = inject(ElementRef);
 
   public openSettings = output<void>();
   public presetCollaborators = PRESET_COLLABORATORS;
   public isPersonaMenuOpen = signal<boolean>(false);
   public isExportMenuOpen = signal<boolean>(false);
+
+  public onDocumentClick(event: MouseEvent): void {
+    if (!this.elementRef.nativeElement.contains(event.target as Node)) {
+      this.isPersonaMenuOpen.set(false);
+      this.isExportMenuOpen.set(false);
+    }
+  }
 
   public copyShareLink(): void {
     navigator.clipboard.writeText(window.location.href);
@@ -246,8 +260,10 @@ export class BoardHeaderComponent {
   public openSecondTab(): void {
     const onlineNames = new Set(this.presenceService.onlineUsers().map(u => u.name.replace(' (You)', '')));
     const nextPreset = this.presetCollaborators.find(p => !onlineNames.has(p.name)) || this.presetCollaborators[1];
+    const newUid = 'user-' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
     const url = new URL(window.location.href);
     url.searchParams.set('user', nextPreset.name);
+    url.searchParams.set('uid', newUid);
     window.open(url.toString(), '_blank');
     this.toastService.show(`Opening 2nd tab as ${nextPreset.name}! Move mouse in either tab to see real cursor sync.`, 'info');
   }
