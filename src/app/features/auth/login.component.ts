@@ -103,8 +103,21 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-center flex flex-col items-center gap-2" role="status" aria-live="polite">
                   <span class="text-3xl" aria-hidden="true">📬</span>
                   <h3 class="font-bold text-lg">Check your inbox</h3>
-                  <p class="text-sm text-muted">We sent a sign-in link to <b class="text-ink">{{ sentTo }}</b>. Open it on this device to continue.</p>
-                  <button type="button" (click)="linkSentTo.set(null)" class="text-xs font-semibold text-violet underline underline-offset-2 mt-1">Use a different email</button>
+                  <p class="text-sm text-muted">
+                    @switch (sentKind()) {
+                      @case ('reset') { We sent a password reset link to <b class="text-ink">{{ sentTo }}</b>. It also works if you signed up with Google. }
+                      @case ('confirm') { We sent a confirmation link to <b class="text-ink">{{ sentTo }}</b>. Open it to finish creating your account. }
+                      @default { We sent a sign-in link to <b class="text-ink">{{ sentTo }}</b>. Open it on this device to continue. }
+                    }
+                  </p>
+                  <button type="button" (click)="resend()" [disabled]="resendIn() > 0 || resending()"
+                    class="text-xs font-semibold text-violet underline underline-offset-2 mt-1 disabled:opacity-60 disabled:no-underline disabled:cursor-not-allowed">
+                    {{ resending() ? 'Sending…' : resendIn() > 0 ? 'Resend link in ' + resendIn() + 's' : 'Resend link' }}
+                  </button>
+                  @if (resendNotice()) {
+                    <p class="text-xs text-muted" role="status" aria-live="polite">{{ resendNotice() }}</p>
+                  }
+                  <button type="button" (click)="linkSentTo.set(null)" class="text-xs font-semibold text-violet underline underline-offset-2">Use a different email</button>
                 </div>
               } @else {
                 <button type="button" (click)="google()" [disabled]="loading() !== null" class="btn !py-3 !text-sm">
@@ -125,16 +138,44 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                   <span class="h-px flex-1 bg-white/10"></span>or use email<span class="h-px flex-1 bg-white/10"></span>
                 </div>
 
-                <form (submit)="$event.preventDefault(); sendLink()" class="flex flex-col gap-3" novalidate>
+                <form (submit)="$event.preventDefault(); submit()" class="flex flex-col gap-3" novalidate>
+                  @if (mode() === 'signup') {
+                    <div>
+                      <label for="acct-name" class="label">Name</label>
+                      <input id="acct-name" type="text" autocomplete="name" #acctName [value]="accountName()" (input)="accountName.set(acctName.value)" class="field">
+                    </div>
+                  }
                   <div>
                     <label for="email" class="label">Email</label>
                     <input id="email" type="email" autocomplete="email" #emailInput [value]="email()" (input)="email.set(emailInput.value); error.set('')"
                       placeholder="you@company.com" class="field" [attr.aria-invalid]="error() ? 'true' : null" [attr.aria-describedby]="error() ? 'login-error' : null">
                   </div>
+                  @if (mode() === 'signin' || mode() === 'signup') {
+                    <div>
+                      <label for="password" class="label">Password</label>
+                      <input id="password" type="password" [attr.autocomplete]="mode() === 'signup' ? 'new-password' : 'current-password'"
+                        #pwInput [value]="password()" (input)="password.set(pwInput.value); error.set('')" class="field">
+                    </div>
+                  }
                   <button type="submit" [disabled]="loading() !== null" class="btn btn-primary !py-3.5 !text-sm">
-                    {{ loading() === 'email' ? 'Sending…' : 'Email me a sign-in link' }}
+                    {{ loading() === 'email' ? 'Working…' : submitLabel() }}
                   </button>
                 </form>
+
+                <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs font-semibold">
+                  @if (mode() !== 'signin') {
+                    <button type="button" (click)="setMode('signin')" class="text-violet underline underline-offset-2">Sign in with password</button>
+                  }
+                  @if (mode() !== 'signup') {
+                    <button type="button" (click)="setMode('signup')" class="text-violet underline underline-offset-2">Create account</button>
+                  }
+                  @if (mode() !== 'forgot') {
+                    <button type="button" (click)="setMode('forgot')" class="text-violet underline underline-offset-2">Forgot password?</button>
+                  }
+                  @if (mode() !== 'link') {
+                    <button type="button" (click)="setMode('link')" class="text-violet underline underline-offset-2">Email me a sign-in link</button>
+                  }
+                </div>
               }
 
               @if (error()) {
@@ -193,6 +234,13 @@ export class LoginComponent {
   public selectedRole = signal<string>('Staff Eng / Host');
   public selectedColor = signal<string>('#6366f1');
 
+  public mode = signal<'signin' | 'signup' | 'forgot' | 'link'>('signin');
+  public password = signal('');
+  public accountName = signal('');
+  public resendIn = signal(0);
+  public resending = signal(false);
+  public resendNotice = signal('');
+  public sentKind =signal<'link' | 'reset' | 'confirm'>('link');
   public email = signal('');
   public loading = signal<'google' | 'email' | null>(null);
   public error = signal('');
@@ -211,18 +259,92 @@ export class LoginComponent {
     this.selectedColor.set(preset.color);
   }
 
-  public async sendLink(): Promise<void> {
+  public submitLabel = computed(() => ({
+    signin: 'Sign in',
+    signup: 'Create account',
+    forgot: 'Email me a reset link',
+    link: 'Email me a sign-in link'
+  })[this.mode()]);
+
+  private cooldownTimer: ReturnType<typeof setInterval> | null = null;
+
+  private startCooldown(): void {
+    if (this.cooldownTimer) clearInterval(this.cooldownTimer);
+    this.resendIn.set(30);
+    this.cooldownTimer = setInterval(() => {
+      this.resendIn.update(n => n - 1);
+      if (this.resendIn() <= 0 && this.cooldownTimer) {
+        clearInterval(this.cooldownTimer);
+        this.cooldownTimer = null;
+      }
+    }, 1000);
+  }
+
+  public async resend(): Promise<void> {
+    const address = this.linkSentTo();
+    if (!address || this.resendIn() > 0 || this.resending()) return;
+    this.resending.set(true);
+    this.resendNotice.set('');
+    const kind = this.sentKind();
+    const { error } = kind === 'reset' ? await this.authService.requestPasswordReset(address)
+      : kind === 'confirm' ? await this.authService.resendConfirmation(address)
+      : await this.authService.signInWithEmail(address);
+    this.resending.set(false);
+    if (error) {
+      this.resendNotice.set(error.message || 'Could not resend the link. Please try again.');
+    } else {
+      this.resendNotice.set('Link sent again. Check your inbox and spam folder.');
+      this.startCooldown();
+    }
+  }
+
+  public setMode(mode: 'signin' | 'signup' | 'forgot' | 'link'): void {
+    this.mode.set(mode);
+    this.error.set('');
+  }
+
+  public async submit(): Promise<void> {
     if (!this.emailValid()) {
       this.error.set('Please enter a valid email address.');
+      return;
+    }
+    const mode = this.mode();
+    if ((mode === 'signin' || mode === 'signup') && this.password().length < 6) {
+      this.error.set('Password must be at least 6 characters.');
       return;
     }
     this.loading.set('email');
     this.error.set('');
     const address = this.email().trim();
-    const { error } = await this.authService.signInWithEmail(address);
+
+    let failure: Error | null = null;
+    let sent: 'link' | 'reset' | 'confirm' | null = null;
+    if (mode === 'signin') {
+      failure = (await this.authService.signInWithPassword(address, this.password())).error;
+    } else if (mode === 'signup') {
+      const res = await this.authService.signUpWithPassword(address, this.password(), this.accountName().trim() || address.split('@')[0]);
+      failure = res.error;
+      if (!failure && res.needsConfirmation) sent = 'confirm';
+    } else if (mode === 'forgot') {
+      failure = (await this.authService.requestPasswordReset(address)).error;
+      sent = 'reset';
+    } else {
+      failure = (await this.authService.signInWithEmail(address)).error;
+      sent = 'link';
+    }
     this.loading.set(null);
-    if (error) this.error.set(error.message || 'Could not send the link. Please try again.');
-    else this.linkSentTo.set(address);
+
+    if (failure) {
+      this.error.set(failure.message || 'Something went wrong. Please try again.');
+    } else if (sent) {
+      this.sentKind.set(sent);
+      this.linkSentTo.set(address);
+      this.resendNotice.set('');
+      this.startCooldown();
+    } else {
+      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+      this.router.navigateByUrl(returnUrl && returnUrl.startsWith('/') ? returnUrl : '/dashboard');
+    }
   }
 
   public async google(): Promise<void> {

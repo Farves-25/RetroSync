@@ -21,6 +21,7 @@ import { ConfirmModalComponent } from '../../shared/components/confirm-modal.com
         <div class="flex items-center gap-3">
           <button type="button" (click)="isCreateModalOpen.set(true)" class="btn btn-primary">+ New board</button>
           <button type="button" (click)="authService.signOut()" class="btn">Sign out</button>
+          <button type="button" (click)="confirmingAccountDelete.set(true)" class="btn btn-danger">Delete account</button>
         </div>
       </header>
 
@@ -115,6 +116,13 @@ import { ConfirmModalComponent } from '../../shared/components/confirm-modal.com
         </div>
       }
 
+      @if (confirmingAccountDelete()) {
+        <app-confirm-modal title="Delete your account?"
+          message="This permanently deletes your account, the boards you created, and your cards and votes on other boards. This cannot be undone."
+          confirmText="Delete my account" cancelText="Keep my account"
+          [isDestructive]="true" (confirm)="deleteAccount()" (cancel)="confirmingAccountDelete.set(false)"></app-confirm-modal>
+      }
+
       @if (boardToDelete(); as target) {
         <app-confirm-modal title="Delete board" [message]="deleteBoardMessage()" confirmText="Delete board" cancelText="Keep board"
           [isDestructive]="true" (confirm)="confirmDeleteBoard()" (cancel)="boardToDelete.set(null)"></app-confirm-modal>
@@ -181,6 +189,15 @@ export class BoardListComponent implements OnInit {
     this.toastService.show(`Board "${title}" created!`, 'success');
     this.isCreateModalOpen.set(false);
     this.router.navigate(['/board', boardId]);
+  }
+
+  public confirmingAccountDelete = signal(false);
+
+  public async deleteAccount(): Promise<void> {
+    this.confirmingAccountDelete.set(false);
+    const { error } = await this.authService.deleteAccount();
+    if (error) this.toastService.show(`Could not delete account: ${error.message}`, 'error');
+    else this.toastService.show('Your account has been deleted.', 'success');
   }
 
   public requestDeleteBoard(boardId: string, title: string): void {

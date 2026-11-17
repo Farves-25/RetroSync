@@ -149,16 +149,27 @@ export class AuthService {
       if (data.user) {
         this.setAppUserFromSupabase(data.user);
       }
-      return { error };
+      if (error) {
+        const invalid = error.message.toLowerCase().includes('invalid login credentials');
+        return { error: invalid ? new Error(
+          'Incorrect email or password. If you signed up with Google, use Continue with Google, or choose "Forgot password?" to set a password.'
+        ) : error };
+      }
+      return { error: null };
     } catch (err: unknown) {
       return { error: err as Error };
     }
   }
 
-  public async signUpWithPassword(email: string, password: string, name: string): Promise<{ error: Error | null }> {
+  public async signUpWithPassword(
+    email: string, password: string, name: string
+  ): Promise<{ error: Error | null; needsConfirmation?: boolean }> {
     if (!this.supabase.isConfigured()) {
       return { error: new Error('Supabase is not configured yet.') };
     }
+    const exists = new Error(
+      'An account with that email already exists. Try signing in. If you signed up with Google, use Continue with Google, or reset your password.'
+    );
     try {
       const { data, error } = await this.supabase.client.auth.signUp({
         email,
@@ -167,9 +178,67 @@ export class AuthService {
           data: { name }
         }
       });
-      if (data.user) {
-        this.setAppUserFromSupabase(data.user);
+      if (error) {
+        const dup = error.message.toLowerCase().includes('already registered') || error.code === 'user_already_exists';
+        return { error: dup ? exists : error };
       }
+      // With email confirmation enabled, Supabase returns an obfuscated user with no identities for existing emails.
+      if (data.user && data.user.identities?.length === 0) {
+        return { error: exists };
+      }
+      if (data.session && data.user) {
+        this.setAppUserFromSupabase(data.user);
+        return { error: null };
+      }
+      return { error: null, needsConfirmation: true };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
+  }
+
+  /** Sends a password-reset email. Also lets a Google-only user set a password for the same account. */
+  public async requestPasswordReset(email: string): Promise<{ error: Error | null }> {
+    if (!this.supabase.isConfigured()) {
+      return { error: new Error('Supabase is not configured yet.') };
+    }
+    try {
+      const { error } = await this.supabase.client.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/auth/reset-password'
+      });
+      return { error };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
+  }
+
+  public async resendConfirmation(email: string): Promise<{ error: Error | null }> {
+    if (!this.supabase.isConfigured()) {
+      return { error: new Error('Supabase is not configured yet.') };
+    }
+    try {
+      const { error } = await this.supabase.client.auth.resend({ type: 'signup', email });
+      return { error };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
+  }
+
+  public async hasSession(): Promise<boolean> {
+    if (!this.supabase.isConfigured()) return false;
+    try {
+      const { data } = await this.supabase.client.auth.getSession();
+      return !!data.session;
+    } catch {
+      return false;
+    }
+  }
+
+  public async updatePassword(password: string): Promise<{ error: Error | null }> {
+    if (!this.supabase.isConfigured()) {
+      return { error: new Error('Supabase is not configured yet.') };
+    }
+    try {
+      const { error } = await this.supabase.client.auth.updateUser({ password });
       return { error };
     } catch (err: unknown) {
       return { error: err as Error };
@@ -235,6 +304,22 @@ export class AuthService {
 
   public updateUserProfile(name: string, role: string, color: string): void {
     this.switchPersona(name, role, color);
+  }
+
+  /** Permanently deletes the signed-in user's account and data (needs the delete_own_account() migration). */
+  public async deleteAccount(): Promise<{ error: Error | null }> {
+    if (this.currentUser()?.isDemo || !this.supabase.isConfigured()) {
+      await this.signOut();
+      return { error: null };
+    }
+    try {
+      const { error } = await this.supabase.client.rpc('delete_own_account');
+      if (error) return { error: new Error(error.message) };
+      await this.signOut();
+      return { error: null };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
   }
 
   public async signOut(): Promise<void> {
