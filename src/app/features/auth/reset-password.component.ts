@@ -26,7 +26,7 @@ import { ToastService } from '../../shared/services/toast.service';
               <p class="text-xs text-muted mt-1">At least 6 characters.</p>
             </div>
             @if (error()) {
-              <p id="reset-error" role="alert" class="text-sm text-[#ff8a95] bg-[#d63b4a]/10 border border-[#d63b4a]/30 rounded-xl px-3.5 py-2.5">{{ error() }}</p>
+              <p id="reset-error" role="alert" class="text-sm text-[#b3261e] bg-[#ff5a4e]/10 border border-[#b3261e]/40 rounded-xl px-3.5 py-2.5">{{ error() }}</p>
             }
             <button type="submit" [disabled]="saving()" class="btn btn-primary !py-3.5 !text-sm">
               {{ saving() ? 'Saving…' : 'Save password' }}

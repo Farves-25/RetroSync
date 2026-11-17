@@ -265,7 +265,7 @@ commit;`;
           <input id="supabase-key" type="password" #keyInput [value]="key()" (input)="key.set(keyInput.value)" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6…" class="field font-mono !text-xs">
         </div>
 
-        <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-dashed border-white/20">
+        <div class="flex items-center justify-between gap-3 p-3 rounded-xl border border-dashed border-ink/20">
           <p class="text-xs text-muted">Run the SQL migration in the Supabase SQL editor to create boards, columns, cards and votes with RLS.</p>
           <button type="button" (click)="copySchema()" class="btn btn-sm flex-shrink-0">Copy SQL</button>
         </div>

@@ -37,9 +37,9 @@ import { ConfirmModalComponent } from '../../../../shared/components/confirm-mod
         </div>
       }
 
-      <div class="mt-3 pt-2.5 border-t border-dashed border-white/10 flex items-center justify-between gap-2 text-xs">
+      <div class="mt-3 pt-2.5 border-t border-dashed border-ink/10 flex items-center justify-between gap-2 text-xs">
         <div class="flex items-center gap-1.5 min-w-0 text-muted">
-          <span class="w-6 h-6 flex-shrink-0 rounded-full border border-line flex items-center justify-center text-[10px] font-bold text-ink bg-white/10" aria-hidden="true">
+          <span class="w-6 h-6 flex-shrink-0 rounded-full border border-line flex items-center justify-center text-[10px] font-bold text-ink bg-ink/10" aria-hidden="true">
             {{ (card().author_name || 'U').charAt(0).toUpperCase() }}
           </span>
           <span class="truncate font-bold text-ink max-w-[80px]">{{ card().author_name || 'Collaborator' }}</span>

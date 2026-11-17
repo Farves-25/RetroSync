@@ -46,7 +46,7 @@ let nextId = 0;
         role="listbox"
         [attr.id]="uid + '-list'"
         [attr.aria-labelledby]="uid + '-btn'"
-        class="absolute left-0 right-0 top-full mt-2 z-50 max-h-56 overflow-y-auto p-1.5 rounded-2xl border border-white/15 bg-[#14151f] animate-fade-in"
+        class="absolute left-0 right-0 top-full mt-2 z-50 max-h-56 overflow-y-auto p-1.5 rounded-2xl border border-line bg-white shadow-[0_20px_40px_-12px_rgba(21,23,46,.25)] animate-fade-in"
         style="box-shadow: 0 24px 60px -12px rgba(0,0,0,.9), 0 0 0 1px rgba(124,92,255,.15)">
         @for (opt of options(); track opt.value; let i = $index) {
           <li
@@ -56,7 +56,7 @@ let nextId = 0;
             (click)="choose(opt)"
             (mouseenter)="activeIndex.set(i)"
             class="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm cursor-pointer transition-colors"
-            [class.bg-white/10]="i === activeIndex()">
+            [class.bg-ink/10]="i === activeIndex()">
             <span class="flex items-center gap-2.5 min-w-0">
               @if (opt.color) {
                 <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" [style.background-color]="opt.color"></span>

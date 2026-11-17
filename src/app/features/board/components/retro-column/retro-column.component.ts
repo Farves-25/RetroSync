@@ -12,10 +12,10 @@ import { ConfirmModalComponent } from '../../../../shared/components/confirm-mod
   imports: [CdkDropList, CdkDrag, CdkDragPlaceholder, RetroCardComponent, ConfirmModalComponent],
   template: `
     <section class="flex flex-col w-80 md:w-[22rem] flex-shrink-0 max-h-full rounded-[20px] border border-line overflow-hidden animate-fade-in"
-      [style.background]="'linear-gradient(180deg, color-mix(in srgb, ' + column().color_hex + ' 9%, #0d0e16), #0a0b12)'"
+      [style.background]="'linear-gradient(180deg, color-mix(in srgb, ' + column().color_hex + ' 12%, #fffdf8), #fffaf0)'"
       [attr.aria-label]="column().title + ' column'">
       <div class="px-4 py-3 border-b border-line flex items-center justify-between gap-2 select-none"
-        [style.background]="'linear-gradient(180deg, color-mix(in srgb, ' + column().color_hex + ' 26%, #14151f), color-mix(in srgb, ' + column().color_hex + ' 8%, #10111a))'">
+        [style.background]="'linear-gradient(180deg, color-mix(in srgb, ' + column().color_hex + ' 40%, #fffdf8), color-mix(in srgb, ' + column().color_hex + ' 22%, #fffdf8))'">
         @if (isEditingTitle()) {
           <div class="flex items-center gap-1.5 flex-1">
             <label [attr.for]="'col-title-' + column().id" class="sr-only">Column title</label>
@@ -57,7 +57,7 @@ import { ConfirmModalComponent } from '../../../../shared/components/confirm-mod
         @for (card of cards(); track card.id) {
           <div cdkDrag [cdkDragData]="card" [cdkDragDisabled]="view.isCustomView()"
             [class.cursor-grab]="!view.isCustomView()" class="active:cursor-grabbing">
-            <div *cdkDragPlaceholder class="rounded-xl border border-dashed border-white/20 bg-white/5 h-24"></div>
+            <div *cdkDragPlaceholder class="rounded-xl border border-dashed border-ink/20 bg-ink/5 h-24"></div>
             <app-retro-card [card]="card" [color]="column().color_hex" [isBlurred]="boardState.isBlurred()" [isTop]="card.id === view.stats().topCardId"></app-retro-card>
           </div>
         } @empty {
@@ -65,7 +65,7 @@ import { ConfirmModalComponent } from '../../../../shared/components/confirm-mod
             <p class="p-6 text-center text-sm text-muted">No cards match the current filters.</p>
           } @else {
             <button type="button" (click)="onAddCardClick()"
-              class="w-full flex flex-col items-center justify-center gap-1 p-6 border border-dashed border-white/20 rounded-xl text-center cursor-pointer hover:border-line hover:bg-surface/60 transition">
+              class="w-full flex flex-col items-center justify-center gap-1 p-6 border border-dashed border-ink/20 rounded-xl text-center cursor-pointer hover:border-line hover:bg-surface/60 transition">
               <span class="text-2xl" aria-hidden="true">📝</span>
               <span class="text-sm font-bold">Nothing here yet</span>
               <span class="text-xs text-muted">Click to add the first card</span>

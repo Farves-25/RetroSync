@@ -16,7 +16,7 @@ import { ToastService } from '../../../../shared/services/toast.service';
         {{ boardState.isBlurred() ? 'Stealth on' : 'Stealth mode' }}
       </button>
 
-      <div class="flex items-center gap-1.5 pl-2.5 border-l border-white/10" role="group" aria-label="Timer">
+      <div class="flex items-center gap-1.5 pl-2.5 border-l border-ink/10" role="group" aria-label="Timer">
         <span class="text-xs font-bold text-muted hidden sm:inline">Timer</span>
         @for (m of [3, 5, 10]; track m) {
           <button type="button" (click)="setTimer(m)" class="btn btn-sm !px-2.5">{{ m }}m</button>

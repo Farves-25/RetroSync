@@ -30,7 +30,7 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
 
             <!-- User Name Tag -->
             <div
-              class="px-2 py-0.5 rounded-md text-[11px] font-semibold text-white border border-white/30 whitespace-nowrap select-none -mt-1 ml-1"
+              class="px-2 py-0.5 rounded-md text-[11px] font-semibold text-white whitespace-nowrap shadow-md select-none -mt-1 ml-1"
               [style.background-color]="cursor.color">
               {{ cursor.user_name }}
             </div>

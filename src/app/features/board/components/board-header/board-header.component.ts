@@ -15,7 +15,7 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
     '(document:click)': 'onDocumentClick($event)'
   },
   template: `
-    <header class="relative z-50 min-h-16 px-4 sm:px-8 py-3 glass border-b border-white/10 flex flex-wrap items-center justify-between gap-3 select-none">
+    <header class="relative z-50 min-h-16 px-4 sm:px-8 py-3 glass border-b border-ink/10 flex flex-wrap items-center justify-between gap-3 select-none">
       <div class="flex items-center gap-3 min-w-0">
         <a routerLink="/dashboard" class="icon-btn !border-line bg-surface" title="Back to all boards" aria-label="Back to all boards">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -60,8 +60,8 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
               <span class="label !mb-0 px-2 pt-1">Switch identity (this tab)</span>
               @for (preset of presetCollaborators; track preset.name) {
                 <button type="button" role="menuitem" (click)="switchUser(preset.name, preset.role, preset.color)"
-                  class="flex items-center justify-between px-2.5 py-2 rounded-lg text-left font-semibold hover:bg-white/10"
-                  [class.bg-white/10]="authService.currentUser()?.name === preset.name">
+                  class="flex items-center justify-between px-2.5 py-2 rounded-lg text-left font-semibold hover:bg-ink/10"
+                  [class.bg-ink/10]="authService.currentUser()?.name === preset.name">
                   <span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full border border-line" [style.background-color]="preset.color"></span>{{ preset.name }}</span>
                   <span class="text-[11px] text-muted font-medium">{{ preset.role.split('/')[0] }}</span>
                 </button>
@@ -81,9 +81,9 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
           </button>
           @if (isExportMenuOpen()) {
             <div (click)="$event.stopPropagation()" role="menu" class="absolute right-0 top-full mt-2 w-56 panel !rounded-xl p-2 z-50 text-sm flex flex-col gap-1 animate-fade-in">
-              <button type="button" role="menuitem" (click)="exportMarkdown(); isExportMenuOpen.set(false)" class="w-full text-left px-3 py-2 rounded-lg font-semibold hover:bg-white/10 flex justify-between"><span>Markdown</span><span class="text-[11px] text-muted">.md</span></button>
-              <button type="button" role="menuitem" (click)="exportJson(); isExportMenuOpen.set(false)" class="w-full text-left px-3 py-2 rounded-lg font-semibold hover:bg-white/10 flex justify-between"><span>JSON</span><span class="text-[11px] text-muted">.json</span></button>
-              <button type="button" role="menuitem" (click)="copySlackFormat(); isExportMenuOpen.set(false)" class="w-full text-left px-3 py-2 rounded-lg font-semibold hover:bg-white/10 flex justify-between"><span>Copy for Slack / Teams</span><span class="text-[11px] text-muted">clipboard</span></button>
+              <button type="button" role="menuitem" (click)="exportMarkdown(); isExportMenuOpen.set(false)" class="w-full text-left px-3 py-2 rounded-lg font-semibold hover:bg-ink/10 flex justify-between"><span>Markdown</span><span class="text-[11px] text-muted">.md</span></button>
+              <button type="button" role="menuitem" (click)="exportJson(); isExportMenuOpen.set(false)" class="w-full text-left px-3 py-2 rounded-lg font-semibold hover:bg-ink/10 flex justify-between"><span>JSON</span><span class="text-[11px] text-muted">.json</span></button>
+              <button type="button" role="menuitem" (click)="copySlackFormat(); isExportMenuOpen.set(false)" class="w-full text-left px-3 py-2 rounded-lg font-semibold hover:bg-ink/10 flex justify-between"><span>Copy for Slack / Teams</span><span class="text-[11px] text-muted">clipboard</span></button>
             </div>
           }
         </div>

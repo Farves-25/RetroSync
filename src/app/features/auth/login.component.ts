@@ -16,13 +16,13 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
       <!-- Showcase side -->
       <div class="hidden lg:flex flex-col justify-between gap-8 p-12 xl:p-14 relative z-10">
-        <div class="flex items-center gap-3">
-          <span class="logo-mark" aria-hidden="true">R</span>
-          <span class="font-display text-xl font-bold">RetroSync</span>
+        <div class="flex items-center gap-3.5">
+          <span class="logo-mark !w-12 !h-12" aria-hidden="true">R</span>
+          <span class="font-display text-2xl font-extrabold tracking-tight">Retro<span class="gradient-text">Sync</span></span>
         </div>
 
         <div>
-          <span class="pill !bg-white/5 mb-5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live · real-time · multiplayer</span>
+          <span class="pill !bg-ink/5 mb-5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live · real-time · multiplayer</span>
           <h1 class="font-display text-5xl xl:text-6xl font-bold leading-[1.05]">Retros your team<br>will <span class="shine-text">actually love.</span></h1>
           <p class="mt-5 text-base xl:text-lg text-muted max-w-xl leading-relaxed">Run sprint retrospectives on one shared board with live cursors, stealth brainstorming, voting and timers.</p>
           <ul class="mt-6 flex flex-wrap gap-2.5 text-sm font-semibold" aria-label="Features">
@@ -36,28 +36,28 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         <!-- Live board preview -->
         <div class="tilt-stage" aria-hidden="true">
-          <div class="tilt relative rounded-2xl border border-white/15 bg-[#0d0e17]/90 backdrop-blur-xl overflow-hidden max-w-[720px]"
-               style="box-shadow: 0 50px 100px -30px rgba(0,0,0,.9), 0 0 80px -20px rgba(124,92,255,.5)">
+          <div class="tilt relative rounded-2xl border border-line bg-white overflow-hidden max-w-[720px]"
+               style="box-shadow: 0 50px 90px -30px rgba(21,23,46,.35), 0 0 80px -30px rgba(90,82,240,.35)">
             <!-- window chrome -->
-            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-white/[.03]">
+            <div class="flex items-center gap-2 px-4 py-2.5 border-b border-ink/10 bg-ink/[.03]">
               <span class="w-2.5 h-2.5 rounded-full bg-[#ff5f57]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#febc2e]"></span><span class="w-2.5 h-2.5 rounded-full bg-[#28c840]"></span>
               <span class="ml-3 text-xs font-semibold text-muted">Sprint 42 · Retrospective</span>
               <span class="ml-auto pill !py-0.5 !text-[11px] !bg-lemon animate-tick">⏱ 04:12</span>
               <span class="flex -space-x-1.5 ml-2">
-                <span class="w-5 h-5 rounded-full border border-[#0d0e17] bg-[#7c5cff] text-[9px] font-bold flex items-center justify-center">A</span>
-                <span class="w-5 h-5 rounded-full border border-[#0d0e17] bg-[#ff5c8a] text-[9px] font-bold flex items-center justify-center">M</span>
-                <span class="w-5 h-5 rounded-full border border-[#0d0e17] bg-[#10b981] text-[9px] font-bold flex items-center justify-center">S</span>
+                <span class="w-5 h-5 rounded-full border-2 border-white bg-[#7c5cff] text-[9px] font-bold text-white flex items-center justify-center">A</span>
+                <span class="w-5 h-5 rounded-full border-2 border-white bg-[#ff5c8a] text-[9px] font-bold text-white flex items-center justify-center">M</span>
+                <span class="w-5 h-5 rounded-full border-2 border-white bg-[#10b981] text-[9px] font-bold text-white flex items-center justify-center">S</span>
               </span>
             </div>
 
             <div class="grid grid-cols-3 gap-3 p-4 relative">
-              <div class="rounded-xl border border-white/10 p-2.5 flex flex-col gap-2.5" style="background: linear-gradient(180deg, rgba(16,185,129,.12), rgba(255,255,255,.015))">
+              <div class="rounded-xl border border-ink/10 p-2.5 flex flex-col gap-2.5" style="background: linear-gradient(180deg, rgba(16,185,129,.22), rgba(255,255,255,.6))">
                 <p class="text-xs font-bold flex items-center justify-between">What went well 🎉<span class="pill !py-0 !px-1.5 !text-[10px]">2</span></p>
                 <div class="mini-note" style="--c:#10b981">Zero-downtime deploy pipeline hit 99.98%<p class="text-[10px] text-muted mt-1.5 flex justify-between"><span>Alex</span><span>♥ 5</span></p></div>
                 <div class="mini-note" style="--c:#10b981">Design tokens shipped early<p class="text-[10px] text-muted mt-1.5 flex justify-between"><span>Maya</span><span>♥ 3</span></p></div>
               </div>
 
-              <div class="rounded-xl border border-white/10 p-2.5 flex flex-col gap-2.5" style="background: linear-gradient(180deg, rgba(245,158,11,.12), rgba(255,255,255,.015))">
+              <div class="rounded-xl border border-ink/10 p-2.5 flex flex-col gap-2.5" style="background: linear-gradient(180deg, rgba(245,158,11,.24), rgba(255,255,255,.6))">
                 <p class="text-xs font-bold flex items-center justify-between">Could be better 🛠<span class="pill !py-0 !px-1.5 !text-[10px]">2</span></p>
                 <div class="mini-note" style="--c:#f59e0b">
                   <span class="absolute -top-2.5 right-2 pill !py-0 !px-2 !text-[9px] !bg-lemon">⭐ Top voted</span>
@@ -65,10 +65,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 <div class="mini-note" style="--c:#f59e0b"><span class="blur-[4px]">Clearer acceptance criteria please</span><p class="text-[10px] text-muted mt-1.5">🔒 Hidden in stealth</p></div>
               </div>
 
-              <div class="rounded-xl border border-white/10 p-2.5 flex flex-col gap-2.5" style="background: linear-gradient(180deg, rgba(124,92,255,.14), rgba(255,255,255,.015))">
+              <div class="rounded-xl border border-ink/10 p-2.5 flex flex-col gap-2.5" style="background: linear-gradient(180deg, rgba(124,92,255,.2), rgba(255,255,255,.6))">
                 <p class="text-xs font-bold flex items-center justify-between">Action items 🚀<span class="pill !py-0 !px-1.5 !text-[10px]">1</span></p>
                 <div class="mini-note" style="--c:#7c5cff">Weekly 30-min architecture sync every Tuesday<p class="text-[10px] text-muted mt-1.5 flex justify-between"><span>Maya</span><span>♥ 4</span></p></div>
-                <div class="rounded-[11px] border border-dashed border-white/15 py-3 text-center text-[11px] text-muted">+ Add card</div>
+                <div class="rounded-[11px] border border-dashed border-ink/15 py-3 text-center text-[11px] text-muted">+ Add card</div>
               </div>
 
               <div class="live-cursor cur-a" style="left:18%; top:30%">
@@ -87,12 +87,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       <!-- Form side -->
       <div class="flex flex-col items-center justify-center p-6 gap-6 relative z-10">
         <div class="flex items-center gap-3 lg:hidden">
-          <span class="logo-mark" aria-hidden="true">R</span>
-          <span class="font-display text-xl font-bold">RetroSync</span>
+          <span class="logo-mark !w-12 !h-12" aria-hidden="true">R</span>
+          <span class="font-display text-2xl font-extrabold tracking-tight">Retro<span class="gradient-text">Sync</span></span>
         </div>
 
         <div class="gborder w-full max-w-md rounded-[26px]">
-          <div class="panel !rounded-[26px] p-8 flex flex-col gap-5 animate-fade-in !shadow-[0_40px_100px_-30px_rgba(124,92,255,.5)]">
+          <div class="panel !rounded-[26px] p-8 flex flex-col gap-5 animate-fade-in ">
             <div>
               <h2 class="text-3xl font-bold">Welcome back <span aria-hidden="true">👋</span></h2>
               <p class="text-sm text-muted mt-1.5">Sign in to open your boards and sync with your team.</p>
@@ -100,7 +100,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             @if (supabaseService.isConfigured()) {
               @if (linkSentTo(); as sentTo) {
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-5 text-center flex flex-col items-center gap-2" role="status" aria-live="polite">
+                <div class="rounded-2xl border border-ink/10 bg-ink/5 p-5 text-center flex flex-col items-center gap-2" role="status" aria-live="polite">
                   <span class="text-3xl" aria-hidden="true">📬</span>
                   <h3 class="font-bold text-lg">Check your inbox</h3>
                   <p class="text-sm text-muted">
@@ -122,7 +122,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               } @else {
                 <button type="button" (click)="google()" [disabled]="loading() !== null" class="btn !py-3 !text-sm">
                   @if (loading() === 'google') {
-                    <span class="w-4 h-4 rounded-full border-2 border-white/25 border-t-white animate-spin" aria-hidden="true"></span>
+                    <span class="w-4 h-4 rounded-full border-2 border-ink/25 border-t-white animate-spin" aria-hidden="true"></span>
                   } @else {
                   <svg class="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
                     <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
@@ -135,7 +135,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 </button>
 
                 <div class="flex items-center gap-3 text-xs text-muted" aria-hidden="true">
-                  <span class="h-px flex-1 bg-white/10"></span>or use email<span class="h-px flex-1 bg-white/10"></span>
+                  <span class="h-px flex-1 bg-ink/10"></span>or use email<span class="h-px flex-1 bg-ink/10"></span>
                 </div>
 
                 <form (submit)="$event.preventDefault(); submit()" class="flex flex-col gap-3" novalidate>
@@ -179,11 +179,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               }
 
               @if (error()) {
-                <p id="login-error" role="alert" class="text-sm text-[#ff8a95] bg-[#d63b4a]/10 border border-[#d63b4a]/30 rounded-xl px-3.5 py-2.5">{{ error() }}</p>
+                <p id="login-error" role="alert" class="text-sm text-[#b3261e] bg-[#ff5a4e]/10 border border-[#b3261e]/40 rounded-xl px-3.5 py-2.5">{{ error() }}</p>
               }
 
               <div class="flex items-center gap-3 text-xs text-muted" aria-hidden="true">
-                <span class="h-px flex-1 bg-white/10"></span>or<span class="h-px flex-1 bg-white/10"></span>
+                <span class="h-px flex-1 bg-ink/10"></span>or<span class="h-px flex-1 bg-ink/10"></span>
               </div>
 
               <button type="button" (click)="showDemo.set(!showDemo())" [attr.aria-expanded]="showDemo()" class="btn !py-3 !text-sm">
@@ -192,7 +192,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             }
 
             @if (showDemo() || !supabaseService.isConfigured()) {
-              <div class="flex flex-col gap-4 animate-fade-in rounded-2xl border border-white/10 bg-white/[.03] p-4">
+              <div class="flex flex-col gap-4 animate-fade-in rounded-2xl border border-ink/10 bg-ink/[.03] p-4">
                 <div>
                   <label for="user-name" class="label">Display name</label>
                   <input id="user-name" type="text" #nameInput [value]="userName()" (input)="userName.set(nameInput.value)" (keydown.enter)="enterDemo()" placeholder="e.g. Alex Rivera" class="field">
@@ -205,7 +205,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                       <button type="button" (click)="selectPreset(preset)" [attr.aria-pressed]="selectedRole() === preset.role"
                         class="px-3 py-2.5 rounded-xl border text-left text-sm font-semibold flex items-center gap-2.5 transition hover:-translate-y-0.5"
                         [class.border-violet]="selectedRole() === preset.role" [class.bg-violet/20]="selectedRole() === preset.role"
-                        [class.border-white/10]="selectedRole() !== preset.role" [class.bg-white/5]="selectedRole() !== preset.role">
+                        [class.border-ink/10]="selectedRole() !== preset.role" [class.bg-ink/5]="selectedRole() !== preset.role">
                         <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" [style.background-color]="preset.color" [style.box-shadow]="'0 0 10px ' + preset.color"></span>
                         <span class="truncate">{{ preset.role.split('/')[0] }}</span>
                       </button>

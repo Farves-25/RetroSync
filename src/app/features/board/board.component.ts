@@ -36,7 +36,7 @@ import { AddColumnModalComponent } from './components/column-modal/add-column-mo
       <main class="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-8 flex items-stretch gap-5 pb-28">
         @if (boardState.isLoading()) {
           <div class="m-auto flex flex-col items-center gap-3 text-muted" role="status" aria-live="polite">
-            <span class="w-9 h-9 rounded-full border-4 border-white/10 border-t-violet animate-spin"></span>
+            <span class="w-9 h-9 rounded-full border-4 border-ink/10 border-t-violet animate-spin"></span>
             <span class="text-sm font-medium">Loading board…</span>
           </div>
         }
