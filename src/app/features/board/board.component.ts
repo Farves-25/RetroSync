@@ -4,23 +4,23 @@ import { BoardStateService } from '../../core/services/board-state.service';
 import { RealtimePresenceService } from '../../core/services/realtime-presence.service';
 import { AuthService, PRESET_COLLABORATORS } from '../../core/services/auth.service';
 import { BoardHeaderComponent } from './components/board-header/board-header.component';
+import { BoardInsightsComponent } from './components/board-insights/board-insights.component';
 import { RetroColumnComponent } from './components/retro-column/retro-column.component';
 import { CursorCanvasComponent } from './components/cursor-canvas/cursor-canvas.component';
 import { FacilitatorToolbarComponent } from './components/facilitator-toolbar/facilitator-toolbar.component';
 import { AddCardModalComponent } from './components/card-modal/add-card-modal.component';
 import { AddColumnModalComponent } from './components/column-modal/add-column-modal.component';
-import { SettingsModalComponent } from './components/settings-modal/settings-modal.component';
 
 @Component({
   selector: 'app-board',
   imports: [
     BoardHeaderComponent,
+    BoardInsightsComponent,
     RetroColumnComponent,
     CursorCanvasComponent,
     FacilitatorToolbarComponent,
     AddCardModalComponent,
-    AddColumnModalComponent,
-    SettingsModalComponent
+    AddColumnModalComponent
   ],
   template: `
     <div class="relative w-screen h-screen flex flex-col overflow-hidden canvas-grid">
@@ -28,12 +28,18 @@ import { SettingsModalComponent } from './components/settings-modal/settings-mod
       <app-cursor-canvas></app-cursor-canvas>
 
       <!-- Board Navigation & Presence Header -->
-      <app-board-header
-        (openSettings)="isSettingsModalOpen.set(true)">
-      </app-board-header>
+      <app-board-header></app-board-header>
+
+      <app-board-insights></app-board-insights>
 
       <!-- Main Columns Scroll Canvas -->
-      <main class="flex-1 overflow-x-auto overflow-y-hidden p-6 md:p-8 flex items-start gap-6 pb-28">
+      <main class="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-8 flex items-stretch gap-5 pb-28">
+        @if (boardState.isLoading()) {
+          <div class="m-auto flex flex-col items-center gap-3 text-muted" role="status" aria-live="polite">
+            <span class="w-9 h-9 rounded-full border-4 border-white/10 border-t-violet animate-spin"></span>
+            <span class="text-sm font-medium">Loading board…</span>
+          </div>
+        }
         @for (column of boardState.columns(); track column.id) {
           <app-retro-column
             [column]="column"
@@ -44,9 +50,11 @@ import { SettingsModalComponent } from './components/settings-modal/settings-mod
       </main>
 
       <!-- Facilitator Floating Controls -->
-      <app-facilitator-toolbar
-        (openAddColumn)="isAddColumnModalOpen.set(true)">
-      </app-facilitator-toolbar>
+      @if (boardState.isFacilitator()) {
+        <app-facilitator-toolbar
+          (openAddColumn)="isAddColumnModalOpen.set(true)">
+        </app-facilitator-toolbar>
+      }
 
       <!-- Modals -->
       @if (isAddCardModalOpen()) {
@@ -62,12 +70,6 @@ import { SettingsModalComponent } from './components/settings-modal/settings-mod
           (close)="isAddColumnModalOpen.set(false)">
         </app-add-column-modal>
       }
-
-      @if (isSettingsModalOpen()) {
-        <app-settings-modal
-          (close)="isSettingsModalOpen.set(false)">
-        </app-settings-modal>
-      }
     </div>
   `
 })
@@ -79,7 +81,6 @@ export class BoardComponent implements OnInit, OnDestroy {
 
   public isAddCardModalOpen = signal<boolean>(false);
   public isAddColumnModalOpen = signal<boolean>(false);
-  public isSettingsModalOpen = signal<boolean>(false);
   public activeColumnId = signal<string>('');
 
   public connectedColumnIds = computed(() => {

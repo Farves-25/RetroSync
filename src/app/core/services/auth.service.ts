@@ -28,8 +28,30 @@ export class AuthService {
   public readonly currentUser = signal<AppUser | null>(this.getStoredUser());
   public readonly isAuthenticated = computed(() => this.currentUser() !== null);
 
+  /** Resolves once any persisted / redirect-returned Supabase session has been restored. */
+  public readonly ready: Promise<void>;
+
   constructor() {
-    this.checkInitialSession();
+    this.ready = this.checkInitialSession();
+    this.listenForAuthChanges();
+  }
+
+  private listenForAuthChanges(): void {
+    if (!this.supabase.isConfigured()) return;
+    try {
+      this.supabase.client.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) this.setAppUserFromSupabase(session.user);
+      });
+    } catch {
+      // ignore: client unavailable
+    }
+  }
+
+  private colorFor(seed: string): string {
+    const palette = ['#7c5cff', '#ff5c8a', '#10b981', '#f59e0b', '#06b6d4', '#f97316', '#8b5cf6'];
+    let h = 0;
+    for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return palette[h % palette.length];
   }
 
   private getStoredUser(): AppUser | null {
@@ -56,7 +78,7 @@ export class AuthService {
     return null;
   }
 
-  private async checkInitialSession() {
+  private async checkInitialSession(): Promise<void> {
     if (this.supabase.isConfigured()) {
       try {
         const { data } = await this.supabase.client.auth.getSession();
@@ -74,9 +96,9 @@ export class AuthService {
     const appUser: AppUser = {
       id: user.id,
       email: user.email || 'developer@retrosync.io',
-      name: user.user_metadata?.['name'] || user.email?.split('@')[0] || 'Team Member',
-      color: existing?.color || '#6366f1',
-      avatar_url: user.user_metadata?.['avatar_url'],
+      name: user.user_metadata?.['name'] || user.user_metadata?.['full_name'] || user.email?.split('@')[0] || 'Team Member',
+      color: existing?.id === user.id ? existing.color : this.colorFor(user.id),
+      avatar_url: user.user_metadata?.['avatar_url'] || user.user_metadata?.['picture'],
       role: user.user_metadata?.['role'] || 'Engineer',
       isDemo: false
     };
@@ -94,8 +116,23 @@ export class AuthService {
       const { error } = await this.supabase.client.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: window.location.origin
+          emailRedirectTo: window.location.origin + '/dashboard'
         }
+      });
+      return { error };
+    } catch (err: unknown) {
+      return { error: err as Error };
+    }
+  }
+
+  public async signInWithGoogle(): Promise<{ error: Error | null }> {
+    if (!this.supabase.isConfigured()) {
+      return { error: new Error('Supabase is not configured.') };
+    }
+    try {
+      const { error } = await this.supabase.client.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/dashboard' }
       });
       return { error };
     } catch (err: unknown) {

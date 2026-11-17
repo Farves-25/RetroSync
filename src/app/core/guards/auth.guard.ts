@@ -1,11 +1,12 @@
 import { inject } from '@angular/core';
-import { CanActivateFn } from '@angular/router';
+import { CanActivateFn, Router } from '@angular/router';
 import { AuthService, PRESET_COLLABORATORS } from '../services/auth.service';
 
-export const authGuard: CanActivateFn = (route) => {
+export const authGuard: CanActivateFn = async (route, state) => {
   const authService = inject(AuthService);
+  const router = inject(Router);
 
-  // If query parameters specify a user or uid (e.g. from "Open 2nd Tab"), ALWAYS prioritize creating that distinct persona!
+  // "Open 2nd tab" links carry a persona so two tabs can act as different people.
   const userParam = route.queryParamMap.get('user');
   const uidParam = route.queryParamMap.get('uid');
 
@@ -17,11 +18,12 @@ export const authGuard: CanActivateFn = (route) => {
     return true;
   }
 
+  // Wait for a persisted / OAuth / magic-link session to be restored before deciding.
+  await authService.ready;
+
   if (authService.isAuthenticated()) {
     return true;
   }
 
-  // Fallback initial demo host
-  authService.signInAsDemoUser('Alex Rivera');
-  return true;
+  return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
 };

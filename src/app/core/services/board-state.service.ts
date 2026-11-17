@@ -301,7 +301,30 @@ export class BoardStateService {
 
   // --- Active Board Loading & Realtime Subscription ---
 
+  private loadToken = 0;
+  public readonly isLoading = signal<boolean>(false);
+
   public async loadBoard(boardId: string): Promise<void> {
+    // Drop the previous board's data right away so it never flashes on screen,
+    // and ignore results from any earlier load that finishes late.
+    const token = ++this.loadToken;
+    this.currentBoard.set(null);
+    this.columns.set([]);
+    this.cards.set([]);
+    this.userVotedCardIds.set(new Set());
+    if (this.realtimeChannel) {
+      this.realtimeChannel.unsubscribe();
+      this.realtimeChannel = null;
+    }
+    this.isLoading.set(true);
+    try {
+      await this.loadBoardInternal(boardId, token);
+    } finally {
+      if (token === this.loadToken) this.isLoading.set(false);
+    }
+  }
+
+  private async loadBoardInternal(boardId: string, token: number): Promise<void> {
     this.initBoardBroadcast(boardId);
 
     if (this.supabase.isConfigured()) {
@@ -312,6 +335,7 @@ export class BoardStateService {
           .eq('id', boardId)
           .single();
 
+        if (token !== this.loadToken) return;
         if (!error && boardData) {
           this.currentBoard.set(boardData);
 
@@ -321,6 +345,7 @@ export class BoardStateService {
             this.supabase.client.from('votes').select('*').eq('board_id', boardId)
           ]);
 
+          if (token !== this.loadToken) return;
           const user = this.authService.currentUser();
           const votedIds = new Set<string>();
           const voteCounts = new Map<string, number>();
@@ -349,6 +374,7 @@ export class BoardStateService {
       }
     }
 
+    if (token !== this.loadToken) return;
     // Load from local persistent storage
     this.loadFromPersistentStorage(boardId);
   }

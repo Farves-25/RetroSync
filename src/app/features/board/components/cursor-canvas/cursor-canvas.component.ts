@@ -22,7 +22,7 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
               <path
                 d="M3 3L10.07 19.97L12.58 12.58L19.97 10.07L3 3Z"
                 [style.fill]="cursor.color"
-                stroke="#0f172a"
+                stroke="#17140f"
                 stroke-width="1.5"
                 stroke-linejoin="round"
               />
@@ -30,7 +30,7 @@ import { RealtimePresenceService } from '../../../../core/services/realtime-pres
 
             <!-- User Name Tag -->
             <div
-              class="px-2 py-0.5 rounded-md text-[11px] font-semibold text-white shadow-lg whitespace-nowrap select-none backdrop-blur-sm -mt-1 ml-1"
+              class="px-2 py-0.5 rounded-md text-[11px] font-semibold text-white border border-white/30 whitespace-nowrap select-none -mt-1 ml-1"
               [style.background-color]="cursor.color">
               {{ cursor.user_name }}
             </div>
